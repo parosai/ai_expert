@@ -27,6 +27,7 @@ dependencies:
     - backcall==0.2.0
     - cachetools==4.1.1
     - chardet==3.0.4
+    - cycler==0.10.0
     - decorator==4.4.2
     - gast==0.3.3
     - google-auth==1.20.1
@@ -44,7 +45,9 @@ dependencies:
     - jupyter-core==4.6.3
     - keras==2.4.3
     - keras-preprocessing==1.1.2
+    - kiwisolver==1.2.0
     - markdown==3.2.2
+    - matplotlib==3.3.1
     - numpy==1.18.5
     - oauthlib==3.1.0
     - opencv-python==4.4.0.42
@@ -52,12 +55,14 @@ dependencies:
     - parso==0.7.1
     - pexpect==4.8.0
     - pickleshare==0.7.5
+    - pillow==7.2.0
     - prompt-toolkit==3.0.6
     - protobuf==3.12.4
     - ptyprocess==0.6.0
     - pyasn1==0.4.8
     - pyasn1-modules==0.2.8
     - pygments==2.6.1
+    - pyparsing==2.4.7
     - python-dateutil==2.8.1
     - pyyaml==5.3.1
     - pyzmq==19.0.2
