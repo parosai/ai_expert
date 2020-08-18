@@ -51,7 +51,7 @@ model.fit(
     x_train,
     batch_size=1,
     shuffle=True,
-    epochs=100000)
+    epochs=1000)
 
 
 
