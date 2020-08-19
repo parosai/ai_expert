@@ -65,8 +65,8 @@ def get_latent_vectors(path_img_files):
         latent_matrix[index] = feature
 
         print(index, '/', n)
-        if (index >= 1000) :
-            break;
+        #if (index >= 1000) :
+        #    break;
 
     return latent_matrix
 
