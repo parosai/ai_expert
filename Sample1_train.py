@@ -9,6 +9,8 @@ from keras.models import Sequential, Model
 from keras_preprocessing import image
 from keras.preprocessing.image import ImageDataGenerator, load_img
 from keras.optimizers import Adam
+import pickle
+
 
 os.environ["CUDA_VISIBLE_DEVICES"]='0'
 
@@ -51,10 +53,7 @@ model.fit(
     x_train,
     batch_size=1,
     shuffle=True,
-    epochs=1000)
-
-
-
+    epochs=100)
 
 
 ## predict
@@ -66,6 +65,14 @@ decoder = Model(encoded_input, decoder_layer(encoded_input)) # 디코더 모델 
 
 encoded_imgs = encoder.predict(x_train)
 decoded_imgs = decoder.predict(encoded_imgs)
+
+
+
+## Save encode model
+encoder.save("Sample1_train_weight.h5")
+latent_vector = encoder.predict(x_train[0])
+with open('sample1_latent_vector.p', 'wb') as file:
+    pickle.dump(latent_vector, file)
 
 
 
