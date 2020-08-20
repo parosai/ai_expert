@@ -21,6 +21,9 @@ import shutil
 
 from sklearn.metrics import precision_recall_curve
 from sklearn.metrics import average_precision_score
+from sklearn.manifold import TSNE
+
+
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -45,7 +48,10 @@ vgg19.eval()
 
 
 
+loop = 0
 def get_latent_vectors(path_img_files):
+    global  loop
+
     n = len(path_img_files)
     latent_matrix = np.zeros((n, 4096))
 
@@ -66,7 +72,9 @@ def get_latent_vectors(path_img_files):
         feature = feature / LA.norm(feature)  # Feature Normalization
         latent_matrix[index] = feature
 
-        print(index, '/', n)
+        print(str(loop))
+        loop += 1
+
         #if (index >= 1000) :
         #    break;
 
@@ -87,15 +95,45 @@ latent_matrix_templates = get_latent_vectors(template_files)
 ###  Testset
 PATH_TESTSET = '../dataset_crop/test/'     ##### H.PARAM #####
 
+testset = []
 testset_files = []
 folders = os.listdir(PATH_TESTSET)
 for fold in folders:
     path = PATH_TESTSET + fold
     files = os.listdir(path)
+    tmp = []
     for f in files:
+        tmp.append(path + '/' + f)
         testset_files.append(path + '/' + f)
+    testset.append(tmp)
 
-latent_matrix_testset = get_latent_vectors(testset_files)
+
+
+### Get latent vector
+latent_matrix_testset_grouped = []
+latent_matrix_testset = []
+for files in testset:
+    results = get_latent_vectors(files)
+    latent_matrix_testset_grouped.append(results)
+
+    for item in results:
+        latent_matrix_testset.append(item)
+
+
+latent_matrix_testset_grouped = np.array(latent_matrix_testset_grouped)
+latent_matrix_testset = np.array(latent_matrix_testset)
+
+
+
+### T-SNE
+print('Start T-SNE')
+model = TSNE(learning_rate=100)
+for group in latent_matrix_testset_grouped:
+    transformed = model.fit_transform(group)
+    xs = transformed[:,0]
+    ys = transformed[:,1]
+    plt.scatter(xs,ys)
+plt.show()
 
 
 
