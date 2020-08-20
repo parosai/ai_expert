@@ -30,7 +30,7 @@
     예를 들어, 저희가 이 모델을 가져온다면 마지막 classifier layer의 node 갯수만 10 -> 7 로 바꾸면 될 것 같습니다.
 
     - [Pytorch tutorial](https://github.com/yunjey/pytorch-tutorial) (optional): 
-    딥러닝을 계속 공부하실 계획이라면 파이토치를 추천드리고, 토치를 시작하는 분들을 위한 pytorch tutorial 입니다. 저희 랩의 유명인사신데요, 현재 네이버 클로바 AI에서 연구하고 계십니다.
+    딥러닝을 계속 공부하실 계획이라면 파이토치를 추천드리고, 토치를 시작하는 분들을 위한 pytorch tutorial 입니다.
     코드와 코멘트가 매우 깔끔하고 정돈되어 있으니, 토치를 쓰실 때 참고하시기 좋습니다.
   
 3. 코멘트
