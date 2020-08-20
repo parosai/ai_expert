@@ -3,11 +3,6 @@
 * mark down(md) 형식으로 다양하게 사용이 가능하며, 구글에 mark down table/grammar 라고 치시면 다양한 활용법이 나옵니다. [참고](https://heropy.blog/2017/09/30/markdown/)
 
 
-## TODO
-
-(예시, 보시고 삭제하셔도 돼요~)
-- [ ] vgg
-- [ ] something ...
 
 
 
