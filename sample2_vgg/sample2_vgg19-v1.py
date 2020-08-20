@@ -19,10 +19,12 @@ import torchvision
 import torchvision.transforms as transforms
 import shutil
 
+from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import average_precision_score
+
 import warnings
 warnings.filterwarnings('ignore')
 os.environ['CUDA_VISIBLE_DEVICES']='0'
-
 
 
 
@@ -40,7 +42,6 @@ class VGG19(nn.Module):
 vgg19 = VGG19().cuda()
 #vgg19.training(False)
 vgg19.eval()
-
 
 
 
@@ -73,6 +74,14 @@ def get_latent_vectors(path_img_files):
 
 
 
+### Template
+PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'
+
+template_files = []
+template_files.append(PATH_TEMPLATE)
+
+latent_matrix_templates = get_latent_vectors(template_files)
+
 
 
 ###  Testset
@@ -90,40 +99,64 @@ latent_matrix_testset = get_latent_vectors(testset_files)
 
 
 
-### Template
-PATH_TEMPLATE = '../dataset_crop/template/Edge-Loc/397.png'
-
-template_files = []
-template_files.append(PATH_TEMPLATE)
-
-latent_matrix_templates = get_latent_vectors(template_files)
-
-
-
 ### Calculate cos similarity
 cos_similarity = np.dot(latent_matrix_templates, latent_matrix_testset.T) / (LA.norm(latent_matrix_templates)*LA.norm(latent_matrix_testset))
 sorted_index = np.argsort(cos_similarity)[0][::-1]  # sort the scores
 cos_similarity = cos_similarity[0, sorted_index]
+### create sorted arr of cos_similarity
+sorted_cos_similarity = np.zeros(len(cos_similarity))
+for idx in sorted_index:
+    sorted_cos_similarity[idx] = cos_similarity[idx]
 
 
 
-### save result
-THRESHOLD = 0.05
+y_test = []
+y_score = []
+
+K = 51
 PATH_RESULT = './result/'
-for idx, value in enumerate(cos_similarity):
-    if (value < THRESHOLD):
-        if (idx == 0):
-            print('Empty. Please check Threshold !')
-        break
+for idx, value in enumerate(sorted_cos_similarity):
+    if idx >= K :
+        break;
 
     if not (os.path.isdir(PATH_RESULT)):
         os.makedirs(os.path.join(PATH_RESULT))
 
-    src = testset_files[sorted_index[idx]]
     order = '{0:03d}'.format(idx)
-    tmp = src.split('/')
-    dst = PATH_RESULT + order + '_' + tmp[len(tmp)-2] + '_' + tmp[len(tmp)-1]
-    shutil.copyfile(src, dst)
+
+    testset_path = testset_files[sorted_index[idx]]
+    testset_path_splited = testset_path.split('/')
+    testset_class = testset_path_splited[len(testset_path_splited)-2]
+    testset_filename = testset_path_splited[len(testset_path_splited)-1]
+
+    template_path = PATH_TEMPLATE.split('/')
+    template_class = template_path[len(template_path)-2]
+
+    dst = PATH_RESULT + order + '_' + testset_class + '_' + testset_filename
+
+    shutil.copyfile(testset_path, dst)
+
+    y_score.append(value)
+    if (testset_class == template_class):
+        y_test.append([1])
+    else:
+        y_test.append([0])
+
+
+
+### precision recall curv
+precision, recall, _ = precision_recall_curve(y_test, y_score)
+average_precision = average_precision_score(y_test, y_score)
+
+plt.clf()
+plt.plot(recall, precision, label='Precision-Recall curve')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.ylim([0.0, 1.0])
+plt.xlim([0.0, 1.0])
+plt.title('Precision-Recall example: AUC={0:0.2f}'.format(average_precision))
+#plt.legend(loc="lower left")
+plt.show()
 
 
 
