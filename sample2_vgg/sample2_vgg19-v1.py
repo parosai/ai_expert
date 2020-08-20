@@ -38,6 +38,7 @@ class VGG19(nn.Module):
 
 
 vgg19 = VGG19().cuda()
+#vgg19.training(False)
 vgg19.eval()
 
 
@@ -47,14 +48,14 @@ def get_latent_vectors(path_img_files):
     n = len(path_img_files)
     latent_matrix = np.zeros((n, 4096))
 
-    transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])   ## ???
+    #transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])   ## ???
 
     for index, img_path in enumerate(path_img_files):
         image_np = Image.open(img_path)
         image_np = np.array(image_np)
         image_np = resize(image_np, (224, 224), mode='constant')
         image_np = torch.from_numpy(image_np).permute(2, 0, 1).float()
-        image_np = transform(image_np)
+        #image_np = transform(image_np)
         image_np = Variable(image_np.unsqueeze(0))  # batch size, channel, height, width
         image_np = image_np.cuda()
 
@@ -107,18 +108,21 @@ cos_similarity = cos_similarity[0, sorted_index]
 
 
 ### save result
-THRESHOLD = 0.03134
+THRESHOLD = 0.05
 PATH_RESULT = './result/'
 for idx, value in enumerate(cos_similarity):
     if (value < THRESHOLD):
+        if (idx == 0):
+            print('Empty. Please check Threshold !')
         break
 
     if not (os.path.isdir(PATH_RESULT)):
         os.makedirs(os.path.join(PATH_RESULT))
 
     src = testset_files[sorted_index[idx]]
+    order = '{0:03d}'.format(idx)
     tmp = src.split('/')
-    dst = PATH_RESULT + tmp[len(tmp)-1]
+    dst = PATH_RESULT + order + '_' + tmp[len(tmp)-2] + '_' + tmp[len(tmp)-1]
     shutil.copyfile(src, dst)
 
 
