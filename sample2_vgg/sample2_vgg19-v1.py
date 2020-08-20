@@ -75,7 +75,7 @@ def get_latent_vectors(path_img_files):
 
 
 ### Template
-PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'
+PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'    ##### H.PARAM #####
 
 template_files = []
 template_files.append(PATH_TEMPLATE)
@@ -85,7 +85,7 @@ latent_matrix_templates = get_latent_vectors(template_files)
 
 
 ###  Testset
-PATH_TESTSET = '../dataset_crop/test/'
+PATH_TESTSET = '../dataset_crop/test/'     ##### H.PARAM #####
 
 testset_files = []
 folders = os.listdir(PATH_TESTSET)
@@ -113,7 +113,7 @@ for idx in sorted_index:
 y_test = []
 y_score = []
 
-K = 51
+K = 51   ##### H.PARAM #####
 PATH_RESULT = './result/'
 for idx, value in enumerate(sorted_cos_similarity):
     if idx >= K :
