@@ -218,7 +218,7 @@ def get_latent_vectors(path_img_files, model):
 
 
 ### Template
-PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'    ##### H.PARAM #####
+PATH_TEMPLATE = '../dataset_crop/template/Scratch/135.png'     ##### H.PARAM #####
 
 template_files = []
 template_files.append(PATH_TEMPLATE)
@@ -263,11 +263,16 @@ latent_matrix_testset = np.array(latent_matrix_testset)
 ### T-SNE
 print('Start T-SNE')
 model = TSNE(learning_rate=100)
-for group in latent_matrix_testset_grouped:
+scatters = []
+legends = []
+for idx, group in enumerate(latent_matrix_testset_grouped):
     transformed = model.fit_transform(group)
     xs = transformed[:,0]
     ys = transformed[:,1]
-    plt.scatter(xs,ys)
+    tmp = plt.scatter(xs, ys, s=8)
+    scatters.append(tmp)
+    legends.append(folders[idx])
+plt.legend(scatters, legends)
 plt.show()
 
 
@@ -286,7 +291,7 @@ for idx in sorted_index:
 y_test = []
 y_score = []
 
-K = 51   ##### H.PARAM #####
+K = 114                      ##### H.PARAM #####
 PATH_RESULT = './result/'
 for idx, value in enumerate(sorted_cos_similarity):
     if idx >= K :
