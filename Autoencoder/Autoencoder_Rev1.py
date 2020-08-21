@@ -35,12 +35,12 @@ model_path_dir = 'saved_model'
 image_size = 224*224
 h_dim = 400
 z_dim = 20
-num_epochs = 2
+num_epochs = 200
 # batch_size = 128
-batch_size = 4
+batch_size = 64
 learning_rate = 1e-3
 
-train_folder = '/home/com15/ai_expert/dataset_crop/Testing_samples/'
+train_folder = '/home/com15/ai_expert/dataset_crop/Train_Together/'
 
 # training##MNIST### dataset
 def load_images(folder):
@@ -72,7 +72,7 @@ data_loader = DataLoader(dataset=load_images(train_folder),
 # assert False
 # VAE model
 class VAE(nn.Module):
-    def __init__(self, image_size=224*224, h_dim=400, z_dim=20):
+    def __init__(self, image_size=224*224, h_dim=100, z_dim=20):
         super(VAE, self).__init__()
         self.fc1 = nn.Linear(image_size, h_dim)
         self.fc2 = nn.Linear(h_dim, z_dim)
@@ -103,13 +103,16 @@ class VAE(nn.Module):
 model = VAE().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
+f = open('./train_log.txt', 'a')
+f.write('----------------------start-------------------')
+
 # Start training
 for epoch in range(num_epochs):
     for i, x in enumerate(data_loader):
         # Forward pass
         image_np = np.array(x)
         # print(data_loader)
-        print("image_np", image_np, image_np.shape)
+        #print("image_np", image_np, image_np.shape)
 
         x = x.to(device).view(-1, image_size)
         x_reconst, mu, log_var = model(x)
@@ -136,10 +139,16 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
 
-        if (i + 1) % 10 == 0:
-            print("Epoch[{}/{}], Step [{}/{}], Reconst Loss: {:.4f}, KL Div: {:.4f}"
-                  .format(epoch + 1, num_epochs, i + 1, len(data_loader), reconst_loss.item(), kl_div.item()))
-            torch.save(model.state_dict(), model_path_dir)
+    print("Epoch[{}/{}], Step [{}/{}], Reconst Loss: {:.4f}, KL Div: {:.4f}"
+          .format(epoch + 1, num_epochs, i + 1, len(data_loader), reconst_loss.item(), kl_div.item()))
+
+    f.write("Epoch[{}/{}], Step [{}/{}], Reconst Loss: {:.4f}, KL Div: {:.4f}\r\n"
+          .format(epoch + 1, num_epochs, i + 1, len(data_loader), reconst_loss.item(), kl_div.item()))
+
+    if (epoch + 1) % 10 == 0:
+        #torch.save(model.state_dict(), model_path_dir)
+        torch.save(model, './autoencoder_epoch' + str(epoch) + '.pth')
+
     with torch.no_grad():
         # Save the sampled images
         z = torch.randn(batch_size, z_dim).to(device)
@@ -150,3 +159,6 @@ for epoch in range(num_epochs):
         out, _, _ = model(x)
         x_concat = torch.cat([x.view(-1, 1, 224, 224), out.view(-1, 1, 224, 224)], dim=3)
         save_image(x_concat, os.path.join(sample_dir, 'reconst-{}.png'.format(epoch + 1)))
+
+
+f.write('----------------------end-------------------')
