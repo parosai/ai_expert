@@ -110,23 +110,22 @@ class VAE(nn.Module):
         return x_reconst, mu, log_var
 
 
-#model = VAE().to(device)
+# 일단 모델을 생성하고, 파라미터를 예전에 학습한 값으로 교체할 겁니다
+# 이때, 당연히 VAE 모델의 하이퍼파라미터는 학습 때의 것과 같아야합니다
+MODEL_PATH = './autoencoder_epoch119.param'
+model = VAE()
+model.load_state_dict(torch.load(MODEL_PATH))
+model = model.to(device)
+
+# 만약 여기서 latent vector 만 뽑고 싶다면
+# z = model.reparameterize(*model.encode(x))
+# 를 사용하시면 됩니다
 
 
-
-
-MODEL_PATH = './autoencoder_epoch119.pth'
-
-model_ft = torch.load(MODEL_PATH)
-model_ft.eval()
-
-model_ft.VAE.classifier = model_ft.VAE.classifier[:2]
-
-
-
-
-
-
+# MODEL_PATH = './autoencoder_epoch119.pth'
+# model_ft = torch.load(MODEL_PATH)
+# model_ft.eval()
+# model_ft.VAE.classifier = model_ft.VAE.classifier[:2]
 
 
 loop = 0
@@ -142,9 +141,9 @@ def get_latent_vectors(path_img_files, model):
         image_np = Image.open(img_path)
         image_np = np.array(image_np)
         image_np = resize(image_np, (224, 224), mode='constant')
-        image_np = torch.from_numpy(image_np).permute(2, 0, 1).float()
+        image_np = torch.from_numpy(image_np).permute(2, 0, 1).float().unsqueeze(0)
         #image_np = transform(image_np)
-        image_np = Variable(image_np.unsqueeze(0))  # batch size, channel, height, width
+        # image_np = torch.from_numpy(image_np.unsqueeze(0))  # batch size, channel, height, width
         image_np = image_np.cuda()
 
         feature = model(image_np)

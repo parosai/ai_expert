@@ -103,62 +103,73 @@ class VAE(nn.Module):
 model = VAE().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-f = open('./train_log.txt', 'a')
-f.write('----------------------start-------------------')
 
-# Start training
-for epoch in range(num_epochs):
-    for i, x in enumerate(data_loader):
-        # Forward pass
-        image_np = np.array(x)
-        # print(data_loader)
-        #print("image_np", image_np, image_np.shape)
+# Python 에서 파일을 여실 때에는 with 문을 쓰는 게 좋습니다
+# with 문으로 연 파일 스트림은 프로그램이 정상적으로 종료되지 않아도 안전하게 닫히거든요
+# f = open('./train_log.txt', 'a')
+with open('./train_log.txt', 'a') as f:
+    f.write('----------------------start-------------------')
 
-        x = x.to(device).view(-1, image_size)
-        x_reconst, mu, log_var = model(x)
+    # Start training
+    for epoch in range(num_epochs):
+        for i, x in enumerate(data_loader):
+            # Forward pass
+            image_np = np.array(x)
+            # print(data_loader)
+            #print("image_np", image_np, image_np.shape)
 
-
-        # assert False
-        # image_np = torch.from_numpy(image_np).permute(2, 0, 1).float()
-        # image_np = transform(image_np)
-        # image_np = Variable(image_np.squeeze(0))  # batch size, channel, height, width
-        # print(image_np, image_np.shape)
-
-        # image_np = image_np.cuda()
-        # x = image_np.to(device).view(-1, image_size)
-        # x_reconst, mu, log_var = model(x)
-
-        # Compute reconstruction loss and kl divergence
-        # For KL divergence, see Appendix B in VAE paper or http://yunjey47.tistory.com/43
-        reconst_loss = F.binary_cross_entropy(x_reconst, x, size_average=False)
-        kl_div = - 0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
-
-        # Backprop and optimize
-        loss = reconst_loss + kl_div
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-    print("Epoch[{}/{}], Step [{}/{}], Reconst Loss: {:.4f}, KL Div: {:.4f}"
-          .format(epoch + 1, num_epochs, i + 1, len(data_loader), reconst_loss.item(), kl_div.item()))
-
-    f.write("Epoch[{}/{}], Step [{}/{}], Reconst Loss: {:.4f}, KL Div: {:.4f}\r\n"
-          .format(epoch + 1, num_epochs, i + 1, len(data_loader), reconst_loss.item(), kl_div.item()))
-
-    if (epoch + 1) % 10 == 0:
-        #torch.save(model.state_dict(), model_path_dir)
-        torch.save(model, './autoencoder_epoch' + str(epoch) + '.pth')
-
-    with torch.no_grad():
-        # Save the sampled images
-        z = torch.randn(batch_size, z_dim).to(device)
-        out = model.decode(z).view(-1, 1, 224, 224)
-        save_image(out, os.path.join(sample_dir, 'sampled-{}.png'.format(epoch + 1)))
-
-        # Save the reconstructed images
-        out, _, _ = model(x)
-        x_concat = torch.cat([x.view(-1, 1, 224, 224), out.view(-1, 1, 224, 224)], dim=3)
-        save_image(x_concat, os.path.join(sample_dir, 'reconst-{}.png'.format(epoch + 1)))
+            x = x.to(device).view(-1, image_size)
+            x_reconst, mu, log_var = model(x)
 
 
-f.write('----------------------end-------------------')
+            # assert False
+            # image_np = torch.from_numpy(image_np).permute(2, 0, 1).float()
+            # image_np = transform(image_np)
+            # image_np = Variable(image_np.squeeze(0))  # batch size, channel, height, width
+            # print(image_np, image_np.shape)
+
+            # image_np = image_np.cuda()
+            # x = image_np.to(device).view(-1, image_size)
+            # x_reconst, mu, log_var = model(x)
+
+            # Compute reconstruction loss and kl divergence
+            # For KL divergence, see Appendix B in VAE paper or http://yunjey47.tistory.com/43
+            reconst_loss = F.binary_cross_entropy(x_reconst, x, size_average=False)
+            kl_div = - 0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
+
+            # Backprop and optimize
+            loss = reconst_loss + kl_div
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        print("Epoch[{}/{}], Step [{}/{}], Reconst Loss: {:.4f}, KL Div: {:.4f}"
+              .format(epoch + 1, num_epochs, i + 1, len(data_loader), reconst_loss.item(), kl_div.item()))
+
+        f.write("Epoch[{}/{}], Step [{}/{}], Reconst Loss: {:.4f}, KL Div: {:.4f}\r\n"
+              .format(epoch + 1, num_epochs, i + 1, len(data_loader), reconst_loss.item(), kl_div.item()))
+
+        if (epoch + 1) % 10 == 0:
+
+            # 저장할 때에는 모델을 CPU 로 보내준 다음에 해주는 게 좋습니다
+            # 물론 저장하고 나서는 GPU 로 다시 보내주어야 하고요
+            model = model.cpu()
+            torch.save(model.state_dict(), './autoencoder_epoch' + str(epoch) + '.param')
+            model = model.to(device)
+            
+            # 아래와 같은 코드는 모델의 인스턴스 자체를 얼리게 되는데요,
+            # 이러면 나중에 불편한 점이 많습니다
+            # torch.save(model, './autoencoder_epoch' + str(epoch) + '.pth')
+
+        with torch.no_grad():
+            # Save the sampled images
+            z = torch.randn(batch_size, z_dim).to(device)
+            out = model.decode(z).view(-1, 1, 224, 224)
+            save_image(out, os.path.join(sample_dir, 'sampled-{}.png'.format(epoch + 1)))
+
+            # Save the reconstructed images
+            out, _, _ = model(x)
+            x_concat = torch.cat([x.view(-1, 1, 224, 224), out.view(-1, 1, 224, 224)], dim=3)
+            save_image(x_concat, os.path.join(sample_dir, 'reconst-{}.png'.format(epoch + 1)))
+
+    f.write('----------------------end-------------------')
