@@ -23,6 +23,13 @@ import numpy as np
 import torch
 import os
 
+
+# load tags => preprocess 에서 만든걸 가져옵니다.
+npy_path = '/home/userC/soyoungyang/rgb_256_colorization_chi/tags'
+btags_train = np.load(os.path.join(npy_path, 'train_b.npy'), allow_pickle=True)
+btags_test = np.load(os.path.join(npy_path, 'test_b.npy'), allow_pickle=True)
+
+
 def get_anchor_tag(filename, phase):
     '''
     randomly make pos, neg tags with filename's anchor
