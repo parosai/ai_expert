@@ -51,7 +51,7 @@ def get_anchor_tag(filename, phase):
         len_neg = len(neg)
         len_pos = len(pos)
 
-        pos_map = {}    # dictionary 형태를 사용해서, key 가 anchor의 index, value 가 positive class의 value가 되도록 했습니다.
+        pos_map = {}    # dictionary 형태를 사용해서, key 가 anchor의 index, value 가 positive class인 index가 되도록 했습니다.
         neg_map = {}
 
         for l in pos:
@@ -91,7 +91,7 @@ def triplet_loss(anchor, pos_map, neg_map, margin):
         vector_map_p = torch.from_numpy(vector_map_p)
         vector_map_n = torch.from_numpy(vector_map_n)
 
-        v_p = torch.mm(vector_map_p, anchor)    # V_p : 1 x C       # 지금보니 이렇게 one hot vector X matrix 형식이 아니라 인덱싱으로 가져와도 되겠네요...^^
+        v_p = torch.mm(vector_map_p, anchor)    # V_p : 1 x C       # 지금보니 이렇게 one hot vector X matrix 형식이 아니라 인덱싱으로 임베딩 값을 가져와도 되겠네요...^^
         v_n = torch.mm(vector_map_n, anchor)    # V_n : 1 x C
 
         # get L2 distance
