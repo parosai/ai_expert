@@ -272,6 +272,9 @@ for idx, group in enumerate(latent_matrix_testset_grouped):
     tmp = plt.scatter(xs, ys, s=8)
     scatters.append(tmp)
     legends.append(folders[idx])
+plt.legend(loc="lower left")
+plt.ylim([-65.0, 65.0])
+plt.xlim([-65.0, 65.0])
 plt.legend(scatters, legends)
 plt.show()
 

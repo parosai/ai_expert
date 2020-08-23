@@ -83,7 +83,7 @@ def get_latent_vectors(path_img_files):
 
 
 ### Template
-PATH_TEMPLATE = '../dataset_crop/template/Center/587188.png'    ##### H.PARAM #####
+PATH_TEMPLATE = '../dataset_crop/template/Scratch/135.png'    ##### H.PARAM #####
 
 template_files = []
 template_files.append(PATH_TEMPLATE)
@@ -134,9 +134,12 @@ for idx, group in enumerate(latent_matrix_testset_grouped):
     transformed = model.fit_transform(group)
     xs = transformed[:,0]
     ys = transformed[:,1]
-    tmp = plt.scatter(xs, ys, s=8)
+    tmp = plt.scatter(xs, ys, s=10)
     scatters.append(tmp)
     legends.append(folders[idx])
+plt.legend(loc="lower left")
+plt.ylim([-65.0, 65.0])
+plt.xlim([-65.0, 65.0])
 plt.legend(scatters, legends)
 plt.show()
 
@@ -158,7 +161,7 @@ for idx in sorted_index:
 y_test = []
 y_score = []
 
-K = 425   ##### H.PARAM #####
+K = 114   ##### H.PARAM #####
 PATH_RESULT = './result/'
 for idx, value in enumerate(sorted_cos_similarity):
     if idx >= K :
@@ -181,7 +184,7 @@ for idx, value in enumerate(sorted_cos_similarity):
 
     shutil.copyfile(testset_path, dst)
 
-    y_score.append(value)
+    y_score.append([value])
     if (testset_class == template_class):
         y_test.append([1])
     else:
