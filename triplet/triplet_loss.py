@@ -6,7 +6,7 @@
 
 # 이 코드를 돌리시려면 우선 모든 벡터에 대해 임베딩한 값과, pos, neg mapping에 대한 전처리가 필요합니다. 사실 이 부분이 loss 구하는 것 보다 조금 번거롭습니다.
 # input 을 우선 정의해드리겠습니다. 
-# anchor: 한 이미지 속 each pixel 에 대한 임베딩 값입니다. 차원은 batch X Channel(e.g., 3 == rgb) X Height X Width 입니다.
+# anchor: 한 이미지 속 each pixel 에 대한 임베딩 값입니다. 차원은 batch X Channel(!!!여기서는 임베딩 차원 값입니다!!!) X Height X Width 입니다.
 # pos_map, neg_map: batch X HW 의 차원을 가지는 dictionary입니다(여기서 HW란 H X W 차원의 이미지를 H*W size를 가지는 벡터로 resize했을때의 크기인 H*W을 의미합니다). 
 # key가 엥커를 의미하고, 각 key의 value는 positive/negative class인 픽셀의 위치값 입니다.
 
