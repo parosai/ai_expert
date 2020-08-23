@@ -47,6 +47,7 @@ def get_tags(img):
             if is_labeled[j] == 1:
                 continue
 
+            # distance 이하이면 같은 label로 묶어라~ 인데요, 이 부분을 수정하시면 될 것 같습니다.
             val_b = val_b.unsqueeze(0)
             distance = torch.norm((val_a - val_b), 2, -1)
 
@@ -86,6 +87,7 @@ def save_tags_to_np(path, phase, type):
         labels = get_tags(b)
         outputs[str(filename)] = labels
 
+        # 중간중간 확인용으로 print하는 것이니 신경 안쓰셔도 됩니다. 시간이 걸리는지 확인하는 용도로 time.time을 씁니다.
         i+=1
         print("{}\t{}th tags are finished.".format(phase, i))
         if i%30 == 0:
