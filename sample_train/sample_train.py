@@ -33,7 +33,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 NUM_CLASSES = 7
 IMG_SIZE = (224, 224)
 BATCH_SIZE = 16
-model_load = False
+model_load = True
 tune_conv_layer = True
 
 
@@ -183,8 +183,11 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25, is_ince
 
 
 
+if tune_conv_layer:
+    MODEL_PATH = './model_conv_ft.pth'
+else:
+    MODEL_PATH = './model_ft.pth'
 
-MODEL_PATH = './model_ft.pth'
 if not model_load:
     model_ft, hist = train_model(model, dataloaders_dict, criterion, optimizer, num_epochs=120)
     torch.save(model_ft, MODEL_PATH)
@@ -234,7 +237,12 @@ def get_latent_vectors(path_img_files, model):
 
 
 ### Template
-PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'    ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'    ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Donut/639390.png'    ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Edge-Loc/682398.png'    ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Loc/7610.png'    ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Scratch/135.png'    ##### H.PARAM #####
+PATH_TEMPLATE = '../dataset_crop/template/Edge-Ring/12634.png'
 
 template_files = []
 template_files.append(PATH_TEMPLATE)
