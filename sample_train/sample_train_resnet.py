@@ -28,36 +28,38 @@ from sklearn.manifold import TSNE
 
 import warnings
 
+N_DIMS = 512
+
 warnings.filterwarnings('ignore')
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 NUM_CLASSES = 7
 IMG_SIZE = (224, 224)
 BATCH_SIZE = 16
 model_load = True
-tune_conv_layer = True
+tune_conv_layer = False
 
 
 # Reference code from https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
 
-class VGG19(nn.Module):
+class ResNet18(nn.Module):
     def __init__(self):
-        super(VGG19, self).__init__()
-        self.vgg19 = torchvision.models.vgg19(pretrained=True)  # vgg 19 model is imported
-        self.vgg19.classifier = self.vgg19.classifier[0:6]
-        self.vgg19.classifier.add_module('6', nn.Linear(4096, NUM_CLASSES))  # modify output class num
+        super(ResNet18, self).__init__()
+        self.model = torchvision.models.resnet50(pretrained=True)  # vgg 19 model is imported
+        self.model.fc = nn.Linear(N_DIMS, NUM_CLASSES)
         if not tune_conv_layer:
-            for p in self.vgg19.features.parameters():  # freeze conv layer param
-                p.requires_grad = False
+            for name, p in self.model.named_parameters():  # freeze conv layer param
+                if 'fc' not in name:
+                    p.requires_grad = False
 
     def forward(self, x):
-        out = self.vgg19(x)
+        out = self.model(x)
         return out
 
 
-vgg19 = VGG19().cuda()
-# vgg19.eval()
+resnet = ResNet18().cuda()
+# resnet.eval()
 
-model = vgg19
+model = resnet
 criterion = nn.CrossEntropyLoss().cuda()
 if tune_conv_layer:
     params = list(map(lambda x: x[1], list(filter(lambda kv: 'features' in kv[0], model.named_parameters()))))
@@ -88,7 +90,7 @@ dataloaders_dict = {
     x: torch.utils.data.DataLoader(image_datasets[x], batch_size=BATCH_SIZE, shuffle=True, num_workers=4) for x in
     ['train', 'valid']}
 
-writer = SummaryWriter()
+writer = SummaryWriter(log_dir='runs_resnet')
 
 
 def train_model(model, dataloaders, criterion, optimizer, num_epochs=25, is_inception=False):
@@ -180,79 +182,70 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25, is_ince
     return model, val_acc_history
 
 
-
-
-
-if tune_conv_layer:
-    MODEL_PATH = './model_conv_ft.pth'
-else:
-    MODEL_PATH = './model_ft.pth'
-
+MODEL_PATH = './model_resnet_ft.pth'
 if not model_load:
-    model_ft, hist = train_model(model, dataloaders_dict, criterion, optimizer, num_epochs=120)
+    model_ft, hist = train_model(model, dataloaders_dict, criterion, optimizer, num_epochs=200)
     torch.save(model_ft, MODEL_PATH)
 else:
     model_ft = torch.load(MODEL_PATH)
-model_ft.vgg19.classifier = model_ft.vgg19.classifier[:4]
+
+
+class Identity(nn.Module):
+    def __init__(self):
+        super(Identity, self).__init__()
+
+    def forward(self, x):
+        return x
+
+
+model_ft.model.fc = Identity()
 model_ft.eval()
-
-
-
-
 
 loop = 0
 
 
 def get_latent_vectors(path_img_files, model):
-    global  loop
+    global loop
 
     n = len(path_img_files)
-    latent_matrix = np.zeros((n, 4096))
+    latent_matrix = np.zeros((n, N_DIMS))
 
-    #transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])   ## ???
+    # transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])   ## ???
 
     for index, img_path in enumerate(path_img_files):
         image_np = Image.open(img_path)
         image_np = np.array(image_np)
         image_np = resize(image_np, (224, 224), mode='constant')
         image_np = torch.from_numpy(image_np).permute(2, 0, 1).float()
-        #image_np = transform(image_np)
+        # image_np = transform(image_np)
         image_np = Variable(image_np.unsqueeze(0))  # batch size, channel, height, width
         image_np = image_np.cuda()
 
         feature = model(image_np)
         feature = feature.squeeze().cpu().data.numpy()
-        feature = feature.reshape((1, 4096))  # Feature Flatten
+        feature = feature.reshape((1, N_DIMS))  # Feature Flatten
         feature = feature / LA.norm(feature)  # Feature Normalization
         latent_matrix[index] = feature
 
         print(str(loop))
         loop += 1
 
-        #if (index >= 1000) :
+        # if (index >= 1000) :
         #    break;
 
     return latent_matrix
 
 
-
 ### Template
-# PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'    ##### H.PARAM #####
-# PATH_TEMPLATE = '../dataset_crop/template/Donut/639390.png'    ##### H.PARAM #####
-# PATH_TEMPLATE = '../dataset_crop/template/Edge-Loc/682398.png'    ##### H.PARAM #####
-# PATH_TEMPLATE = '../dataset_crop/template/Loc/7610.png'    ##### H.PARAM #####
-# PATH_TEMPLATE = '../dataset_crop/template/Scratch/135.png'    ##### H.PARAM #####
-PATH_TEMPLATE = '../dataset_crop/template/Edge-Ring/12634.png'
+PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'  ##### H.PARAM #####
 
 template_files = []
 template_files.append(PATH_TEMPLATE)
 
 latent_matrix_templates = get_latent_vectors(template_files, model_ft)
 
-
-
 ###  Testset
-PATH_TESTSET = '../dataset_crop/test/'     ##### H.PARAM #####
+PATH_TESTSET = '../dataset_crop/test/'  ##### H.PARAM #####
 
 testset = []
 testset_files = []
@@ -266,8 +259,6 @@ for fold in folders:
         testset_files.append(path + '/' + f)
     testset.append(tmp)
 
-
-
 ### Get latent vector
 latent_matrix_testset_grouped = []
 latent_matrix_testset = []
@@ -278,26 +269,22 @@ for files in testset:
     for item in results:
         latent_matrix_testset.append(item)
 
-
 latent_matrix_testset_grouped = np.array(latent_matrix_testset_grouped)
 latent_matrix_testset = np.array(latent_matrix_testset)
-
-
 
 ### T-SNE
 print('Start T-SNE')
 model = TSNE(learning_rate=100)
 for group in latent_matrix_testset_grouped:
     transformed = model.fit_transform(group)
-    xs = transformed[:,0]
-    ys = transformed[:,1]
-    plt.scatter(xs,ys)
+    xs = transformed[:, 0]
+    ys = transformed[:, 1]
+    plt.scatter(xs, ys)
 plt.show()
 
-
-
 ### Calculate cos similarity
-cos_similarity = np.dot(latent_matrix_templates, latent_matrix_testset.T) / (LA.norm(latent_matrix_templates)*LA.norm(latent_matrix_testset))
+cos_similarity = np.dot(latent_matrix_templates, latent_matrix_testset.T) / (
+        LA.norm(latent_matrix_templates) * LA.norm(latent_matrix_testset))
 sorted_index = np.argsort(cos_similarity)[0][::-1]  # sort the scores
 cos_similarity = cos_similarity[0, sorted_index]
 ### create sorted arr of cos_similarity
@@ -305,15 +292,13 @@ sorted_cos_similarity = np.zeros(len(cos_similarity))
 for idx in sorted_index:
     sorted_cos_similarity[idx] = cos_similarity[idx]
 
-
-
 y_test = []
 y_score = []
 
-K = 51   ##### H.PARAM #####
+K = 51  ##### H.PARAM #####
 PATH_RESULT = './result/'
 for idx, value in enumerate(sorted_cos_similarity):
-    if idx >= K :
+    if idx >= K:
         break;
 
     if not (os.path.isdir(PATH_RESULT)):
@@ -323,11 +308,11 @@ for idx, value in enumerate(sorted_cos_similarity):
 
     testset_path = testset_files[sorted_index[idx]]
     testset_path_splited = testset_path.split('/')
-    testset_class = testset_path_splited[len(testset_path_splited)-2]
-    testset_filename = testset_path_splited[len(testset_path_splited)-1]
+    testset_class = testset_path_splited[len(testset_path_splited) - 2]
+    testset_filename = testset_path_splited[len(testset_path_splited) - 1]
 
     template_path = PATH_TEMPLATE.split('/')
-    template_class = template_path[len(template_path)-2]
+    template_class = template_path[len(template_path) - 2]
 
     dst = PATH_RESULT + order + '_' + testset_class + '_' + testset_filename
 
@@ -338,8 +323,6 @@ for idx, value in enumerate(sorted_cos_similarity):
         y_test.append([1])
     else:
         y_test.append([0])
-
-
 
 ### precision recall curv
 precision, recall, _ = precision_recall_curve(y_test, y_score)
@@ -352,9 +335,7 @@ plt.ylabel('Precision')
 plt.ylim([0.0, 1.0])
 plt.xlim([0.0, 1.0])
 plt.title('Precision-Recall example: AUC={0:0.2f}'.format(average_precision))
-#plt.legend(loc="lower left")
+# plt.legend(loc="lower left")
 plt.show()
-
-
 
 print('Finished !')
