@@ -1,4 +1,5 @@
 
+
 import os
 import torch
 import torch.nn.functional as F
@@ -24,9 +25,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 
-BATCH_SIZE = 64
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
+
 
 class Encoder(torch.nn.Module):
     def __init__(self, image_size=IMG_WIDTH*IMG_HEIGHT):
@@ -48,111 +49,14 @@ class Encoder(torch.nn.Module):
         return out
 
 
-class Decoder(torch.nn.Module):
-    def __init__(self, image_size=IMG_WIDTH*IMG_HEIGHT):
-        super(Decoder, self).__init__()
 
-        self.deconv = torch.nn.Sequential(
-            torch.nn.ConvTranspose2d(16, 16, 3, 2, 1, 1, bias=False), torch.nn.ReLU(),
-            torch.nn.ConvTranspose2d(16, 8, 3, 2, 1, 1, bias=False), torch.nn.ReLU(),
-            torch.nn.ConvTranspose2d(8, 3, 3, 2, 1, 1, bias=False), torch.nn.ReLU(),
-        )
+MODEL_PATH = './autoencoder_epoch119.param'
 
-
-    def forward(self, z):
-        out = self.deconv(z)
-        return out
-
-
-encoder = Encoder().to(device)
-decoder = Decoder().to(device)
-encoder.train()
-decoder.train()
-
-
-
-parameters = list(encoder.parameters()) + list(decoder.parameters()) # 인코더 디코더의 파라미터를 동시에 학습시키기 위해 이를 묶음
-
-loss_func = torch.nn.MSELoss()
-optimizer = torch.optim.Adam(parameters, lr=0.0001)
-
-
-
-### Load train img
-PATH_TEMPLATE = '../dataset_crop/train/'     ##### H.PARAM #####
-
-
-def load_images(path):
-    images = []
-    folders = os.listdir(path)
-    for fold in folders:
-        files = os.listdir(path + fold)
-        for filename in files:
-            template_img = cv2.imread(path+fold+'/'+filename, cv2.IMREAD_COLOR)
-            template_img = cv2.resize(template_img, (IMG_HEIGHT, IMG_WIDTH), cv2.INTER_NEAREST)
-            cv2.normalize(template_img, template_img, 0, 1, cv2.NORM_MINMAX)
-
-            if template_img is not None:
-                images.append(template_img)
-    return images
-
-dataset_template = DataLoader(dataset=load_images(PATH_TEMPLATE), batch_size=BATCH_SIZE, shuffle=True)
-
-
-
-
-x_img = 0
-y_img = 0
-#latent_vector = 0
-
-### Training
-EPOCH = 100          ###  H.PARAM   ###
-for epoch in range(EPOCH):
-    loss = 0.
-    for i, x in enumerate(dataset_template):
-        x = np.array(x)
-        #x = x[np.newaxis, :]
-        x = torch.from_numpy(x).float()
-        x = x.to(device)
-
-        optimizer.zero_grad()
-        x = x.permute(0, 3, 1, 2)
-        z = encoder(x)
-        #latent_vector = z
-        output = decoder(z)
-
-        x_img = x
-        y_img = output
-
-        loss = loss_func(output, x)
-        loss.backward()
-        optimizer.step()
-
-    print("Epoch[{}/{}], Loss: {:.10f}".format(epoch + 1, EPOCH, loss))
-
-x_img = x_img.permute(0, 2, 3, 1)
-x_img = x_img.to('cpu')
-y_img = y_img.permute(0, 2, 3, 1)
-y_img = y_img.to('cpu')
-y_img = torch.autograd.Variable(y_img, requires_grad=True)
-y_img = y_img.detach().numpy()
-
-fig = plt.figure()
-fig_img = fig.add_subplot(1, 2, 1)
-
-fig_img.imshow(x_img[0])
-fig_img = fig.add_subplot(1, 2, 2)
-fig_img.imshow(y_img[0])
-plt.show()
-
-
-#### save weight
-
-
-
-##### Evaluation Testset !
+encoder = Encoder()
+encoder.load_state_dict(torch.load(MODEL_PATH))
+encoder = encoder.to(device)
 encoder.eval()
-decoder.eval()
+
 
 
 ### template

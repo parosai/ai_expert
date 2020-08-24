@@ -1,4 +1,5 @@
 
+
 import os
 import torch
 import torch.nn.functional as F
@@ -24,165 +25,101 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 
-BATCH_SIZE = 64
 IMG_WIDTH = 224
 IMG_HEIGHT = 224
+
 
 class Encoder(torch.nn.Module):
     def __init__(self, image_size=IMG_WIDTH*IMG_HEIGHT):
         super(Encoder, self).__init__()
 
-        self.conv = torch.nn.Sequential(
+        self.conv1 = torch.nn.Sequential(
             torch.nn.Conv2d(3, 8, 3, padding=1, bias=False), torch.nn.ReLU(),
             torch.nn.MaxPool2d(2, 2),
+        )
 
+        self.conv2 = torch.nn.Sequential(
             torch.nn.Conv2d(8, 16, 3, padding=1, bias=False), torch.nn.ReLU(),
             torch.nn.MaxPool2d(2, 2),
+        )
 
+        self.conv3 = torch.nn.Sequential(
             torch.nn.Conv2d(16, 16, 3, padding=1, bias=False), torch.nn.ReLU(),
             torch.nn.MaxPool2d(2, 2),
         )
 
+    def GetLatentLayer1(self, x):
+        out = self.conv1(x)
+        return out
+
+    def GetLatentLayer2(self, x):
+        out = self.conv1(x)
+        out = self.conv2(out)
+        return out
+
+    def GetLatentLayer3(self, x):
+        out = self.conv1(x)
+        out = self.conv2(out)
+        out = self.conv3(out)
+        return out
+
     def forward(self, x):
-        out = self.conv(x)
+        out = self.conv1(x)
+        out = self.conv2(out)
+        out = self.conv3(out)
         return out
 
 
-class Decoder(torch.nn.Module):
-    def __init__(self, image_size=IMG_WIDTH*IMG_HEIGHT):
-        super(Decoder, self).__init__()
 
-        self.deconv = torch.nn.Sequential(
-            torch.nn.ConvTranspose2d(16, 16, 3, 2, 1, 1, bias=False), torch.nn.ReLU(),
-            torch.nn.ConvTranspose2d(16, 8, 3, 2, 1, 1, bias=False), torch.nn.ReLU(),
-            torch.nn.ConvTranspose2d(8, 3, 3, 2, 1, 1, bias=False), torch.nn.ReLU(),
-        )
+MODEL_PATH = './autoencoder_epoch19.param'
 
-
-    def forward(self, z):
-        out = self.deconv(z)
-        return out
-
-
-encoder = Encoder().to(device)
-decoder = Decoder().to(device)
-encoder.train()
-decoder.train()
-
-
-
-parameters = list(encoder.parameters()) + list(decoder.parameters()) # 인코더 디코더의 파라미터를 동시에 학습시키기 위해 이를 묶음
-
-loss_func = torch.nn.MSELoss()
-optimizer = torch.optim.Adam(parameters, lr=0.0001)
-
-
-
-### Load train img
-PATH_TEMPLATE = '../dataset_crop/train/'     ##### H.PARAM #####
-
-
-def load_images(path):
-    images = []
-    folders = os.listdir(path)
-    for fold in folders:
-        files = os.listdir(path + fold)
-        for filename in files:
-            template_img = cv2.imread(path+fold+'/'+filename, cv2.IMREAD_COLOR)
-            template_img = cv2.resize(template_img, (IMG_HEIGHT, IMG_WIDTH), cv2.INTER_NEAREST)
-            cv2.normalize(template_img, template_img, 0, 1, cv2.NORM_MINMAX)
-
-            if template_img is not None:
-                images.append(template_img)
-    return images
-
-dataset_template = DataLoader(dataset=load_images(PATH_TEMPLATE), batch_size=BATCH_SIZE, shuffle=True)
-
-
-
-
-x_img = 0
-y_img = 0
-#latent_vector = 0
-
-### Training
-EPOCH = 100          ###  H.PARAM   ###
-for epoch in range(EPOCH):
-    loss = 0.
-    for i, x in enumerate(dataset_template):
-        x = np.array(x)
-        #x = x[np.newaxis, :]
-        x = torch.from_numpy(x).float()
-        x = x.to(device)
-
-        optimizer.zero_grad()
-        x = x.permute(0, 3, 1, 2)
-        z = encoder(x)
-        #latent_vector = z
-        output = decoder(z)
-
-        x_img = x
-        y_img = output
-
-        loss = loss_func(output, x)
-        loss.backward()
-        optimizer.step()
-
-    print("Epoch[{}/{}], Loss: {:.10f}".format(epoch + 1, EPOCH, loss))
-
-x_img = x_img.permute(0, 2, 3, 1)
-x_img = x_img.to('cpu')
-y_img = y_img.permute(0, 2, 3, 1)
-y_img = y_img.to('cpu')
-y_img = torch.autograd.Variable(y_img, requires_grad=True)
-y_img = y_img.detach().numpy()
-
-fig = plt.figure()
-fig_img = fig.add_subplot(1, 2, 1)
-
-fig_img.imshow(x_img[0])
-fig_img = fig.add_subplot(1, 2, 2)
-fig_img.imshow(y_img[0])
-plt.show()
-
-
-#### save weight
-
-
-
-##### Evaluation Testset !
+encoder = Encoder()
+encoder.load_state_dict(torch.load(MODEL_PATH))
+encoder = encoder.to(device)
 encoder.eval()
-decoder.eval()
+
 
 
 ### template
-PATH_QUERY = '../dataset_crop/template/Loc/7610.png'     ##### H.PARAM #####
+PATH_QUERY = '../dataset_crop/template/Scratch/135.png'     ##### H.PARAM #####
 img = cv2.imread(PATH_QUERY, cv2.IMREAD_COLOR)
 img = cv2.resize(img, (IMG_HEIGHT, IMG_WIDTH), cv2.INTER_NEAREST)
 img = cv2.normalize(img, img, 0, 1, cv2.NORM_MINMAX)
 dataset_test = DataLoader(dataset=[img], batch_size=1, shuffle=False)
-latent_vector = 0
+latent_vector1 = 0
+latent_vector2 = 0
+latent_vector3 = 0
 for _, x in enumerate(dataset_test):
     x = np.array(x)
     x = torch.from_numpy(x).float()
     x = x.to(device)
     x = x.permute(0, 3, 1, 2)
-    z = encoder(x)
-    z = z[0]
+    z1 = encoder.GetLatentLayer1(x)
+    z1 = z1[0]
+    z1 = z1.to('cpu')
+    z1 = torch.autograd.Variable(z1, requires_grad=True)
+    z1 = z1.detach().numpy()
+    z1 = z1.flatten()
+    z1 = z1 / LA.norm(z1)
+    latent_vector1 = z1
 
-    z = z.to('cpu')
-    z = torch.autograd.Variable(z, requires_grad=True)
-    z = z.detach().numpy()
+    z2 = encoder.GetLatentLayer2(x)
+    z2 = z2[0]
+    z2 = z2.to('cpu')
+    z2 = torch.autograd.Variable(z2, requires_grad=True)
+    z2 = z2.detach().numpy()
+    z2 = z2.flatten()
+    z2 = z2 / LA.norm(z2)
+    latent_vector2 = z2
 
-    z = z.flatten()
-
-    z = z / LA.norm(z)
-
-    # z = z[:]
-
-    # z.reshape(12544, 1)
-
-    latent_vector = z
+    z3 = encoder.GetLatentLayer3(x)
+    z3 = z3[0]
+    z3 = z3.to('cpu')
+    z3 = torch.autograd.Variable(z3, requires_grad=True)
+    z3 = z3.detach().numpy()
+    z3 = z3.flatten()
+    z3 = z3 / LA.norm(z3)
+    latent_vector3 = z3
 
 
 
@@ -215,54 +152,75 @@ dataset_test = DataLoader(dataset=testset_files_img, batch_size=1, shuffle=False
 ### Get latent vector
 print('Get latent vector ing...')
 latent_matrix_testset_grouped = {'Center':[], 'Donut':[], 'Edge-Loc':[], 'Edge-Ring':[], 'Loc':[], 'Random':[], 'Scratch':[]}
-latent_matrix_testset = []
+latent_matrix_testset1 = []
+latent_matrix_testset2 = []
+latent_matrix_testset3 = []
 for _, [x, label] in enumerate(dataset_test):
-    # x_img = dataset_template.dataset[0]
-    # x_img = x_img[np.newaxis, :]
     x = np.array(x)
-    #x = x[np.newaxis, :]
     x = torch.from_numpy(x).float()
     x = x.to(device)
     x = x.permute(0, 3, 1, 2)
-    z = encoder(x)
-    z = z[0]
-    #z = z.view(-1)
-    z = torch.flatten(z)
 
-    z = z.to('cpu')
-    z = torch.autograd.Variable(z, requires_grad=True)
-    z = z.detach().numpy()
+    z1 = encoder.GetLatentLayer1(x)
+    z1 = z1[0]
+    z1 = torch.flatten(z1)
+    z1 = z1.to('cpu')
+    z1 = torch.autograd.Variable(z1, requires_grad=True)
+    z1 = z1.detach().numpy()
+    z1 = z1 / LA.norm(z1)
+    latent_matrix_testset1.append(z1)
 
-    z = z / LA.norm(z)
+    z2 = encoder.GetLatentLayer2(x)
+    z2 = z2[0]
+    z2 = torch.flatten(z2)
+    z2 = z2.to('cpu')
+    z2 = torch.autograd.Variable(z2, requires_grad=True)
+    z2 = z2.detach().numpy()
+    z2 = z2 / LA.norm(z2)
+    latent_matrix_testset2.append(z2)
 
-    latent_matrix_testset_grouped[label[0]].append(z)
-    latent_matrix_testset.append(z)
+    z3 = encoder.GetLatentLayer3(x)
+    z3 = z3[0]
+    z3 = torch.flatten(z3)
+    z3 = z3.to('cpu')
+    z3 = torch.autograd.Variable(z3, requires_grad=True)
+    z3 = z3.detach().numpy()
+    z3 = z3 / LA.norm(z3)
+    latent_matrix_testset3.append(z3)
+
+    latent_matrix_testset_grouped[label[0]].append(z3)
 
 
 
 ### T-SNE
-print('T-SNE ing...')
-model = TSNE(learning_rate=100)
-scatters = []
-legends = []
-for label, tensor in latent_matrix_testset_grouped.items():
-    tensor = np.array(tensor)
-    transformed = model.fit_transform(tensor)
-    xs = transformed[:,0]
-    ys = transformed[:,1]
-    tmp = plt.scatter(xs, ys, s=8)
-    scatters.append(tmp)
-    legends.append(label)
-# plt.ylim([-65.0, 65.0])
-# plt.xlim([-65.0, 65.0])
-plt.legend(scatters, legends, loc="lower left")
-plt.show()
+# print('T-SNE ing...')
+# model = TSNE(learning_rate=100)
+# scatters = []
+# legends = []
+# for label, tensor in latent_matrix_testset_grouped.items():
+#     tensor = np.array(tensor)
+#     transformed = model.fit_transform(tensor)
+#     xs = transformed[:,0]
+#     ys = transformed[:,1]
+#     tmp = plt.scatter(xs, ys, s=8)
+#     scatters.append(tmp)
+#     legends.append(label)
+# # plt.ylim([-65.0, 65.0])
+# # plt.xlim([-65.0, 65.0])
+# plt.legend(scatters, legends, loc="lower left")
+# plt.show()
 
+
+
+### concate
+latent_vector = np.concatenate([latent_vector1, latent_vector2, latent_vector3])
+latent_matrix_testset_concated = []
+for i in range(len(latent_matrix_testset1)):
+    latent_matrix_testset_concated.append(np.concatenate([latent_matrix_testset1[i], latent_matrix_testset2[i], latent_matrix_testset3[i]]))
+latent_matrix_testset = np.array(latent_matrix_testset_concated)
 
 
 ### Calculate cos similarity
-latent_matrix_testset = np.array(latent_matrix_testset)
-
 #cos_similarity = np.dot(latent_vector, latent_matrix_testset.T) / (LA.norm(latent_vector)*LA.norm(latent_matrix_testset))
 similarity = np.dot(latent_vector, latent_matrix_testset.T)
 #np.squeeze(similarity, axis=-1)
@@ -279,8 +237,8 @@ for idx in sorted_index:
 y_test = []
 y_score = []
 
-K = 51                      ##### H.PARAM #####
-PATH_RESULT = './result/'
+K = 114                      ##### H.PARAM #####
+PATH_RESULT = './result_v4/'
 for idx, value in enumerate(sorted_similarity):
     if idx >= K :
         break;
