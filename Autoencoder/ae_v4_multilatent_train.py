@@ -100,7 +100,7 @@ optimizer = torch.optim.Adam(parameters, lr=0.0001)
 
 
 ### Load train img
-PATH_TEMPLATE = '../dataset_crop/valid/'     ##### H.PARAM #####
+PATH_TEMPLATE = '../Augmented_Trainset/train/'     ##### H.PARAM #####
 
 
 def load_images(path):
@@ -127,7 +127,7 @@ y_img = 0
 #latent_vector = 0
 
 ### Training
-EPOCH = 21          ###  H.PARAM   ###
+EPOCH = 200          ###  H.PARAM   ###
 for epoch in range(EPOCH):
     loss = 0.
     for i, x in enumerate(dataset_template):
