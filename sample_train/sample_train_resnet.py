@@ -34,9 +34,10 @@ warnings.filterwarnings('ignore')
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 NUM_CLASSES = 7
 IMG_SIZE = (224, 224)
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 model_load = True
-tune_conv_layer = False
+tune_conv_layer = True
+dataset_dir = 'augment'
 
 
 # Reference code from https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
@@ -44,7 +45,7 @@ tune_conv_layer = False
 class ResNet18(nn.Module):
     def __init__(self):
         super(ResNet18, self).__init__()
-        self.model = torchvision.models.resnet50(pretrained=True)  # vgg 19 model is imported
+        self.model = torchvision.models.resnet18(pretrained=True)  # vgg 19 model is imported
         self.model.fc = nn.Linear(N_DIMS, NUM_CLASSES)
         if not tune_conv_layer:
             for name, p in self.model.named_parameters():  # freeze conv layer param
@@ -62,8 +63,8 @@ resnet = ResNet18().cuda()
 model = resnet
 criterion = nn.CrossEntropyLoss().cuda()
 if tune_conv_layer:
-    params = list(map(lambda x: x[1], list(filter(lambda kv: 'features' in kv[0], model.named_parameters()))))
-    base_params = list(map(lambda x: x[1], list(filter(lambda kv: 'features' not in kv[0], model.named_parameters()))))
+    params = list(map(lambda x: x[1], list(filter(lambda kv: 'fc' not in kv[0], model.named_parameters()))))
+    base_params = list(map(lambda x: x[1], list(filter(lambda kv: 'fc' in kv[0], model.named_parameters()))))
     # optimizer = optim.Adam([{'params': params, 'lr': 1e-7}], lr=0.00001)
     optimizer = optim.Adam([{'params': base_params}, {'params': params, 'lr': 1e-7}], lr=0.00001)
 else:
@@ -84,6 +85,8 @@ data_transforms = {
 
 # Create training and validation datasets
 data_dir = '../dataset_crop/'
+if dataset_dir == 'augment':
+    data_dir = '../dataset_v2_augment/'
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'valid']}
 # Create training and validation dataloaders
 dataloaders_dict = {
@@ -168,7 +171,14 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25, is_ince
                 best_model_wts = copy.deepcopy(model.state_dict())
             if phase == 'valid':
                 val_acc_history.append(epoch_acc)
-
+        if epoch % 30 == 0:
+            if tune_conv_layer:
+                TMP_MODEL_PATH = './model_resnet_conv_ft_tmp{}.pth'.format(str(epoch))
+            else:
+                TMP_MODEL_PATH = './model_resnet_ft_tmp{}.pth'.format(str(epoch))
+            tmp_best_model = copy.deepcopy(model)
+            tmp_best_model.load_state_dict(best_model_wts)
+            torch.save(tmp_best_model, TMP_MODEL_PATH)
         print()
 
     time_elapsed = time.time() - since
@@ -182,9 +192,12 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25, is_ince
     return model, val_acc_history
 
 
-MODEL_PATH = './model_resnet_ft.pth'
+if tune_conv_layer:
+    MODEL_PATH = './model_resnet_conv_ft.pth'
+else:
+    MODEL_PATH = './model_resnet_ft.pth'
 if not model_load:
-    model_ft, hist = train_model(model, dataloaders_dict, criterion, optimizer, num_epochs=200)
+    model_ft, hist = train_model(model, dataloaders_dict, criterion, optimizer, num_epochs=210)
     torch.save(model_ft, MODEL_PATH)
 else:
     model_ft = torch.load(MODEL_PATH)
@@ -237,7 +250,12 @@ def get_latent_vectors(path_img_files, model):
 
 
 ### Template
-PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'  ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'  ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Donut/639390.png'    ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Edge-Loc/682398.png'    ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Loc/7610.png'    ##### H.PARAM #####
+PATH_TEMPLATE = '../dataset_crop/template/Scratch/135.png'  ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Edge-Ring/12634.png'
 
 template_files = []
 template_files.append(PATH_TEMPLATE)
