@@ -35,7 +35,19 @@ IMG_SIZE = (224, 224)
 BATCH_SIZE = 16
 model_load = True
 tune_conv_layer = True
+tune_fc_layer = False
+dataset_dir = 'augment'
 
+
+def weights_init_uniform_rule(m): # weight init
+    classname = m.__class__.__name__
+    # for every Linear layer in a model..
+    if classname.find('Linear') != -1:
+        # get the number of the inputs
+        n = m.in_features
+        y = 1.0 / np.sqrt(n)
+        m.weight.data.uniform_(-y, y)
+        m.bias.data.fill_(0)
 
 # Reference code from https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
 
@@ -45,6 +57,14 @@ class VGG19(nn.Module):
         self.vgg19 = torchvision.models.vgg19(pretrained=True)  # vgg 19 model is imported
         self.vgg19.classifier = self.vgg19.classifier[0:6]
         self.vgg19.classifier.add_module('6', nn.Linear(4096, NUM_CLASSES))  # modify output class num
+        if tune_fc_layer:
+            self.vgg19.classifier.add_module('6', nn.Linear(4096, 4096))
+            self.vgg19.classifier.add_module('7', nn.ReLU(inplace=True))
+            self.vgg19.classifier.add_module('8', nn.Dropout())
+            self.vgg19.classifier.add_module('9', nn.Linear(4096, 4096))
+            self.vgg19.classifier.add_module('10', nn.ReLU(inplace=True))
+            self.vgg19.classifier.add_module('11', nn.Dropout())
+            self.vgg19.classifier.add_module('12', nn.Linear(4096, NUM_CLASSES))
         if not tune_conv_layer:
             for p in self.vgg19.features.parameters():  # freeze conv layer param
                 p.requires_grad = False
@@ -56,6 +76,8 @@ class VGG19(nn.Module):
 
 vgg19 = VGG19().cuda()
 # vgg19.eval()
+if tune_fc_layer:
+    vgg19.apply(weights_init_uniform_rule)
 
 model = vgg19
 criterion = nn.CrossEntropyLoss().cuda()
@@ -82,6 +104,8 @@ data_transforms = {
 
 # Create training and validation datasets
 data_dir = '../dataset_crop/'
+if dataset_dir == 'augment':
+    data_dir = '../dataset_v2_augment/'
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x), data_transforms[x]) for x in ['train', 'valid']}
 # Create training and validation dataloaders
 dataloaders_dict = {
@@ -166,7 +190,16 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25, is_ince
                 best_model_wts = copy.deepcopy(model.state_dict())
             if phase == 'valid':
                 val_acc_history.append(epoch_acc)
-
+        if epoch % 30 == 0:
+            if tune_conv_layer:
+                TMP_MODEL_PATH = './model_vgg_conv_ft_tmp{}.pth'.format(str(epoch))
+            elif tune_fc_layer:
+                TMP_MODEL_PATH = './model_vgg_fc_ft_tmp{}.pth'.format(str(epoch))
+            else:
+                TMP_MODEL_PATH = './model_vgg_ft_tmp{}.pth'.format(str(epoch))
+            tmp_best_model = copy.deepcopy(model)
+            tmp_best_model.load_state_dict(best_model_wts)
+            torch.save(tmp_best_model, TMP_MODEL_PATH)
         print()
 
     time_elapsed = time.time() - since
@@ -185,15 +218,21 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25, is_ince
 
 if tune_conv_layer:
     MODEL_PATH = './model_conv_ft.pth'
+elif tune_fc_layer:
+    MODEL_PATH = './model_fc_ft.pth'
 else:
     MODEL_PATH = './model_ft.pth'
 
 if not model_load:
-    model_ft, hist = train_model(model, dataloaders_dict, criterion, optimizer, num_epochs=120)
+    model_ft, hist = train_model(model, dataloaders_dict, criterion, optimizer, num_epochs=180)
     torch.save(model_ft, MODEL_PATH)
 else:
     model_ft = torch.load(MODEL_PATH)
-model_ft.vgg19.classifier = model_ft.vgg19.classifier[:4]
+
+if tune_fc_layer:
+    model_ft.vgg19.classifier = model_ft.vgg19.classifier[:-3]
+else:
+    model_ft.vgg19.classifier = model_ft.vgg19.classifier[:4]
 model_ft.eval()
 
 
@@ -240,9 +279,9 @@ def get_latent_vectors(path_img_files, model):
 # PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'    ##### H.PARAM #####
 # PATH_TEMPLATE = '../dataset_crop/template/Donut/639390.png'    ##### H.PARAM #####
 # PATH_TEMPLATE = '../dataset_crop/template/Edge-Loc/682398.png'    ##### H.PARAM #####
-# PATH_TEMPLATE = '../dataset_crop/template/Loc/7610.png'    ##### H.PARAM #####
+PATH_TEMPLATE = '../dataset_crop/template/Loc/7610.png'    ##### H.PARAM #####
 # PATH_TEMPLATE = '../dataset_crop/template/Scratch/135.png'    ##### H.PARAM #####
-PATH_TEMPLATE = '../dataset_crop/template/Edge-Ring/12634.png'
+# PATH_TEMPLATE = '../dataset_crop/template/Edge-Ring/12634.png'
 
 template_files = []
 template_files.append(PATH_TEMPLATE)
