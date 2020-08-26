@@ -81,18 +81,40 @@ encoder.eval()
 
 
 ### template
-# PATH_QUERY = '../dataset_crop/template/Scratch/135.png'     ##### H.PARAM #####114
-# PATH_QUERY = '../dataset_crop/template/Loc/7610.png'     ##### H.PARAM #####355
-# PATH_QUERY = '../dataset_crop/template/Center/587199.png'     ##### H.PARAM #####425
-# PATH_QUERY = '../dataset_crop/template/Donut/639390.png'     ##### H.PARAM #####51
-# PATH_QUERY = '../dataset_crop/template/Edge-Loc/682398.png'     ##### H.PARAM #####515
-PATH_QUERY = '../dataset_crop/template/Edge-Ring/12634.png'     ##### H.PARAM #####963
+# PATH_QUERY = '../dataset_crop/template/Center/587199.png'  ##### H.PARAM #####
+#PATH_RESULT = './result_Center_weight_0.3_1_3/'
+# K = 425
+
+# PATH_QUERY = '../dataset_crop/template/Edge-Loc/682398.png'  ##### H.PARAM #####
+#PATH_RESULT = './result_EdgeLoc_weight_0.3_1_3/'
+# K = 515
+
+# PATH_QUERY = '../dataset_crop/template/Loc/7610.png'  ##### H.PARAM #####
+#PATH_RESULT = './result_Loc_weight_0.3_1_3/'
+# K = 355
+
+PATH_QUERY = '../dataset_crop/template/Donut/639390.png'  ##### H.PARAM #####
+PATH_RESULT = './result_Donut_weight_0.3_1_3/'
+K = 51
+
+# PATH_QUERY = '../dataset_crop/template/Edge-Ring/12634.png'  ##### H.PARAM #####
+#PATH_RESULT = './result_EdgeRing_weight_0.3_1_3/'
+# K = 963
+
+# PATH_QUERY = '../dataset_crop/template/Scratch/135.png'    ##### H.PARAM #####
+PATH_RESULT = './result_Scratch_weight_0.3_1_3/'
+# K = 114
+
+
+
+
+
 ####(0,0,1), (1,1,1), (0.3,1,3)
 alpha1=0.3
 alpha2=1
 alpha3=3
-K = 963                    ##### H.PARAM #####
-PATH_RESULT = './result_Edge-Ring_weight_0.3_1_3/'
+
+
 
 
 
