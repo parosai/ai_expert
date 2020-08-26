@@ -29,13 +29,13 @@ from sklearn.manifold import TSNE
 import warnings
 
 warnings.filterwarnings('ignore')
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 NUM_CLASSES = 7
 IMG_SIZE = (224, 224)
 BATCH_SIZE = 16
 model_load = True
 tune_conv_layer = True
-tune_fc_layer = False
+tune_fc_layer = True
 dataset_dir = 'augment'
 
 
@@ -192,11 +192,11 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25, is_ince
                 val_acc_history.append(epoch_acc)
         if epoch % 30 == 0:
             if tune_conv_layer:
-                TMP_MODEL_PATH = './model_vgg_conv_ft_tmp{}.pth'.format(str(epoch))
-            elif tune_fc_layer:
-                TMP_MODEL_PATH = './model_vgg_fc_ft_tmp{}.pth'.format(str(epoch))
+                TMP_MODEL_PATH = './model_vgg_conv_ft_tmp.pth'
+                if tune_fc_layer:
+                    TMP_MODEL_PATH = './model_vgg_fc_ft_tmp.pth'
             else:
-                TMP_MODEL_PATH = './model_vgg_ft_tmp{}.pth'.format(str(epoch))
+                TMP_MODEL_PATH = './model_vgg_ft_tmp.pth'
             tmp_best_model = copy.deepcopy(model)
             tmp_best_model.load_state_dict(best_model_wts)
             torch.save(tmp_best_model, TMP_MODEL_PATH)
@@ -218,8 +218,8 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25, is_ince
 
 if tune_conv_layer:
     MODEL_PATH = './model_conv_ft.pth'
-elif tune_fc_layer:
-    MODEL_PATH = './model_fc_ft.pth'
+    if tune_fc_layer:
+        MODEL_PATH = './model_fc_ft.pth'
 else:
     MODEL_PATH = './model_ft.pth'
 
@@ -278,8 +278,8 @@ def get_latent_vectors(path_img_files, model):
 ### Template
 # PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'    ##### H.PARAM #####
 # PATH_TEMPLATE = '../dataset_crop/template/Donut/639390.png'    ##### H.PARAM #####
-# PATH_TEMPLATE = '../dataset_crop/template/Edge-Loc/682398.png'    ##### H.PARAM #####
-PATH_TEMPLATE = '../dataset_crop/template/Loc/7610.png'    ##### H.PARAM #####
+PATH_TEMPLATE = '../dataset_crop/template/Edge-Loc/682398.png'    ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Loc/7610.png'    ##### H.PARAM #####
 # PATH_TEMPLATE = '../dataset_crop/template/Scratch/135.png'    ##### H.PARAM #####
 # PATH_TEMPLATE = '../dataset_crop/template/Edge-Ring/12634.png'
 

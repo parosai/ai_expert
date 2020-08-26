@@ -37,8 +37,19 @@ IMG_SIZE = (224, 224)
 BATCH_SIZE = 32
 model_load = True
 tune_conv_layer = True
+tune_fc_layer = True
 dataset_dir = 'augment'
 
+
+def weights_init_uniform_rule(m): # weight init
+    classname = m.__class__.__name__
+    # for every Linear layer in a model..
+    if classname.find('Linear') != -1:
+        # get the number of the inputs
+        n = m.in_features
+        y = 1.0 / np.sqrt(n)
+        m.weight.data.uniform_(-y, y)
+        m.bias.data.fill_(0)
 
 # Reference code from https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html
 
@@ -47,6 +58,16 @@ class ResNet18(nn.Module):
         super(ResNet18, self).__init__()
         self.model = torchvision.models.resnet18(pretrained=True)  # vgg 19 model is imported
         self.model.fc = nn.Linear(N_DIMS, NUM_CLASSES)
+        if tune_fc_layer:
+            self.model.fc = nn.Sequential(
+                nn.Linear(N_DIMS, N_DIMS),
+                nn.ReLU(inplace=True),
+                nn.Dropout(),
+                nn.Linear(N_DIMS, N_DIMS),
+                nn.ReLU(inplace=True),
+                nn.Dropout(),
+                nn.Linear(N_DIMS, NUM_CLASSES)
+            )
         if not tune_conv_layer:
             for name, p in self.model.named_parameters():  # freeze conv layer param
                 if 'fc' not in name:
@@ -59,6 +80,8 @@ class ResNet18(nn.Module):
 
 resnet = ResNet18().cuda()
 # resnet.eval()
+if tune_fc_layer:
+    resnet.apply(weights_init_uniform_rule)
 
 model = resnet
 criterion = nn.CrossEntropyLoss().cuda()
@@ -173,9 +196,11 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25, is_ince
                 val_acc_history.append(epoch_acc)
         if epoch % 30 == 0:
             if tune_conv_layer:
-                TMP_MODEL_PATH = './model_resnet_conv_ft_tmp{}.pth'.format(str(epoch))
+                TMP_MODEL_PATH = './model_resnet_conv_ft_tmp.pth'
+                if tune_fc_layer:
+                    TMP_MODEL_PATH = './model_resnet_fc_ft_tmp.pth'
             else:
-                TMP_MODEL_PATH = './model_resnet_ft_tmp{}.pth'.format(str(epoch))
+                TMP_MODEL_PATH = './model_resnet_ft_tmp.pth'
             tmp_best_model = copy.deepcopy(model)
             tmp_best_model.load_state_dict(best_model_wts)
             torch.save(tmp_best_model, TMP_MODEL_PATH)
@@ -194,6 +219,8 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs=25, is_ince
 
 if tune_conv_layer:
     MODEL_PATH = './model_resnet_conv_ft.pth'
+    if tune_fc_layer:
+        MODEL_PATH = './model_resnet_fc_ft.pth'
 else:
     MODEL_PATH = './model_resnet_ft.pth'
 if not model_load:
@@ -210,8 +237,11 @@ class Identity(nn.Module):
     def forward(self, x):
         return x
 
+if tune_fc_layer:
+    model_ft.model.fc = model_ft.model.fc[:4]
+else:
+    model_ft.model.fc = Identity()
 
-model_ft.model.fc = Identity()
 model_ft.eval()
 
 loop = 0
@@ -253,8 +283,11 @@ def get_latent_vectors(path_img_files, model):
 # PATH_TEMPLATE = '../dataset_crop/template/Donut/7907.png'  ##### H.PARAM #####
 # PATH_TEMPLATE = '../dataset_crop/template/Donut/639390.png'    ##### H.PARAM #####
 # PATH_TEMPLATE = '../dataset_crop/template/Edge-Loc/682398.png'    ##### H.PARAM #####
+PATH_TEMPLATE = '../dataset_crop/template/Edge-Loc/397.png'    ##### H.PARAM #####
 # PATH_TEMPLATE = '../dataset_crop/template/Loc/7610.png'    ##### H.PARAM #####
-PATH_TEMPLATE = '../dataset_crop/template/Scratch/135.png'  ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Loc/7553.png'    ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Scratch/135.png'  ##### H.PARAM #####
+# PATH_TEMPLATE = '../dataset_crop/template/Scratch/15909.png'  ##### H.PARAM #####
 # PATH_TEMPLATE = '../dataset_crop/template/Edge-Ring/12634.png'
 
 template_files = []
